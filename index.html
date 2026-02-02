@@ -3,18 +3,622 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Earth</title>
+    <title>척추 증상 자가진단 | 전문의 상담 연결</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
-    <script type="module" src="main.js"></script>
+    <!-- 헤더 -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <span class="logo-icon">🩺</span>
+                <h1>척추건강 클리닉</h1>
+            </div>
+            <nav class="nav">
+                <a href="#diagnosis" class="nav-link">자가진단</a>
+                <a href="#diseases" class="nav-link">척추질환 안내</a>
+                <a href="#appointment" class="nav-link btn-primary">진료 예약</a>
+            </nav>
+            <button class="mobile-menu-btn" aria-label="메뉴">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 히어로 섹션 -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>척추 통증, 혼자 고민하지 마세요</h2>
+                <p>간단한 증상 체크로 가능한 원인을 알아보고<br>맞춤 치료 방법을 안내받으세요</p>
+                <a href="#diagnosis" class="btn-hero">지금 바로 증상 체크하기</a>
+            </div>
+            <div class="hero-image">
+                <div class="spine-illustration">
+                    <svg viewBox="0 0 100 300" class="spine-svg">
+                        <!-- 경추 (목) -->
+                        <g class="spine-section cervical" data-section="cervical">
+                            <ellipse cx="50" cy="20" rx="18" ry="8" fill="#4A90A4"/>
+                            <ellipse cx="50" cy="35" rx="18" ry="8" fill="#4A90A4"/>
+                            <ellipse cx="50" cy="50" rx="19" ry="8" fill="#4A90A4"/>
+                            <ellipse cx="50" cy="65" rx="19" ry="8" fill="#4A90A4"/>
+                            <ellipse cx="50" cy="80" rx="20" ry="8" fill="#4A90A4"/>
+                        </g>
+                        <!-- 흉추 (등) -->
+                        <g class="spine-section thoracic" data-section="thoracic">
+                            <ellipse cx="50" cy="98" rx="22" ry="9" fill="#5BA3B5"/>
+                            <ellipse cx="50" cy="115" rx="23" ry="9" fill="#5BA3B5"/>
+                            <ellipse cx="50" cy="132" rx="24" ry="9" fill="#5BA3B5"/>
+                            <ellipse cx="50" cy="149" rx="24" ry="9" fill="#5BA3B5"/>
+                        </g>
+                        <!-- 요추 (허리) -->
+                        <g class="spine-section lumbar" data-section="lumbar">
+                            <ellipse cx="50" cy="170" rx="26" ry="10" fill="#6DB8C7"/>
+                            <ellipse cx="50" cy="190" rx="28" ry="10" fill="#6DB8C7"/>
+                            <ellipse cx="50" cy="210" rx="28" ry="10" fill="#6DB8C7"/>
+                            <ellipse cx="50" cy="230" rx="27" ry="10" fill="#6DB8C7"/>
+                            <ellipse cx="50" cy="250" rx="26" ry="10" fill="#6DB8C7"/>
+                        </g>
+                        <!-- 천추/미추 -->
+                        <g class="spine-section sacral" data-section="sacral">
+                            <path d="M25 265 Q50 280 75 265 L70 295 Q50 305 30 295 Z" fill="#7ECAD9"/>
+                        </g>
+                    </svg>
+                    <div class="spine-labels">
+                        <span class="label cervical-label">경추 (목)</span>
+                        <span class="label thoracic-label">흉추 (등)</span>
+                        <span class="label lumbar-label">요추 (허리)</span>
+                        <span class="label sacral-label">천추/미추</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 자가진단 섹션 -->
+    <section id="diagnosis" class="diagnosis-section">
+        <div class="container">
+            <h2 class="section-title">척추 증상 자가진단</h2>
+            <p class="section-subtitle">아래 질문에 답변해주시면 가능한 원인과 치료 방법을 안내해 드립니다</p>
+
+            <div class="diagnosis-form">
+                <!-- 진행 표시바 -->
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                    <div class="progress-steps">
+                        <span class="step active" data-step="1">1</span>
+                        <span class="step" data-step="2">2</span>
+                        <span class="step" data-step="3">3</span>
+                        <span class="step" data-step="4">4</span>
+                    </div>
+                </div>
+
+                <!-- Step 1: 통증 부위 -->
+                <div class="form-step active" id="step1">
+                    <h3>어디가 가장 불편하신가요?</h3>
+                    <p class="step-description">통증이 시작되는 주요 부위를 선택해주세요 (복수 선택 가능)</p>
+                    <div class="option-grid location-options">
+                        <label class="option-card">
+                            <input type="checkbox" name="location" value="neck">
+                            <div class="card-content">
+                                <div class="card-icon">🦴</div>
+                                <span class="card-title">목</span>
+                                <span class="card-desc">목 뒤쪽, 목덜미</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="location" value="shoulder">
+                            <div class="card-content">
+                                <div class="card-icon">💪</div>
+                                <span class="card-title">어깨/팔</span>
+                                <span class="card-desc">어깨, 팔, 손까지</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="location" value="upper_back">
+                            <div class="card-content">
+                                <div class="card-icon">🔙</div>
+                                <span class="card-title">등</span>
+                                <span class="card-desc">등 중간, 날개뼈 주변</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="location" value="lower_back">
+                            <div class="card-content">
+                                <div class="card-icon">⬇️</div>
+                                <span class="card-title">허리</span>
+                                <span class="card-desc">허리, 골반 주변</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="location" value="leg">
+                            <div class="card-content">
+                                <div class="card-icon">🦵</div>
+                                <span class="card-title">엉덩이/다리</span>
+                                <span class="card-desc">엉덩이, 허벅지, 종아리, 발</span>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn-next" onclick="nextStep(1)">다음 단계</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: 증상 유형 -->
+                <div class="form-step" id="step2">
+                    <h3>어떤 증상이 있으신가요?</h3>
+                    <p class="step-description">현재 느끼시는 증상을 모두 선택해주세요</p>
+                    <div class="option-grid symptom-options">
+                        <label class="option-card">
+                            <input type="checkbox" name="symptom" value="pain">
+                            <div class="card-content">
+                                <div class="card-icon">😣</div>
+                                <span class="card-title">통증</span>
+                                <span class="card-desc">쑤시거나 아픔</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="symptom" value="numbness">
+                            <div class="card-content">
+                                <div class="card-icon">✋</div>
+                                <span class="card-title">저림</span>
+                                <span class="card-desc">쥐가 나거나 저린 느낌</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="symptom" value="weakness">
+                            <div class="card-content">
+                                <div class="card-icon">💫</div>
+                                <span class="card-title">근력 약화</span>
+                                <span class="card-desc">힘이 빠지는 느낌</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="symptom" value="stiffness">
+                            <div class="card-content">
+                                <div class="card-icon">🔒</div>
+                                <span class="card-title">뻣뻣함</span>
+                                <span class="card-desc">굳어있는 느낌</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="symptom" value="radiating">
+                            <div class="card-content">
+                                <div class="card-icon">⚡</div>
+                                <span class="card-title">방사통</span>
+                                <span class="card-desc">통증이 다른 곳으로 뻗어나감</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="symptom" value="walking_difficulty">
+                            <div class="card-content">
+                                <div class="card-icon">🚶</div>
+                                <span class="card-title">보행 장애</span>
+                                <span class="card-desc">오래 걷기 힘듦</span>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn-prev" onclick="prevStep(2)">이전</button>
+                        <button type="button" class="btn-next" onclick="nextStep(2)">다음 단계</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: 악화 요인 -->
+                <div class="form-step" id="step3">
+                    <h3>언제 증상이 더 심해지나요?</h3>
+                    <p class="step-description">증상이 악화되는 상황을 선택해주세요</p>
+                    <div class="option-grid trigger-options">
+                        <label class="option-card">
+                            <input type="checkbox" name="trigger" value="sitting">
+                            <div class="card-content">
+                                <div class="card-icon">🪑</div>
+                                <span class="card-title">오래 앉아있을 때</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="trigger" value="standing">
+                            <div class="card-content">
+                                <div class="card-icon">🧍</div>
+                                <span class="card-title">오래 서있을 때</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="trigger" value="walking">
+                            <div class="card-content">
+                                <div class="card-icon">🚶‍♂️</div>
+                                <span class="card-title">걸을 때</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="trigger" value="bending">
+                            <div class="card-content">
+                                <div class="card-icon">🙇</div>
+                                <span class="card-title">허리 숙일 때</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="trigger" value="morning">
+                            <div class="card-content">
+                                <div class="card-icon">🌅</div>
+                                <span class="card-title">아침에 일어날 때</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="trigger" value="night">
+                            <div class="card-content">
+                                <div class="card-icon">🌙</div>
+                                <span class="card-title">밤에 누워있을 때</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="trigger" value="lifting">
+                            <div class="card-content">
+                                <div class="card-icon">📦</div>
+                                <span class="card-title">무거운 것 들 때</span>
+                            </div>
+                        </label>
+                        <label class="option-card">
+                            <input type="checkbox" name="trigger" value="coughing">
+                            <div class="card-content">
+                                <div class="card-icon">🤧</div>
+                                <span class="card-title">기침/재채기 할 때</span>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn-prev" onclick="prevStep(3)">이전</button>
+                        <button type="button" class="btn-next" onclick="nextStep(3)">다음 단계</button>
+                    </div>
+                </div>
+
+                <!-- Step 4: 기간 및 강도 -->
+                <div class="form-step" id="step4">
+                    <h3>증상에 대해 조금 더 알려주세요</h3>
+
+                    <div class="input-group">
+                        <label>증상이 시작된 지 얼마나 되었나요?</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="duration" value="acute">
+                                <span>1주일 이내</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="duration" value="subacute">
+                                <span>1주~1개월</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="duration" value="chronic_short">
+                                <span>1~3개월</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="duration" value="chronic_long">
+                                <span>3개월 이상</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>통증 강도는 어느 정도인가요?</label>
+                        <div class="pain-scale">
+                            <input type="range" id="painLevel" name="painLevel" min="0" max="10" value="5">
+                            <div class="pain-labels">
+                                <span>통증 없음</span>
+                                <span>약함</span>
+                                <span>중간</span>
+                                <span>심함</span>
+                                <span>극심함</span>
+                            </div>
+                            <div class="pain-value">현재 선택: <strong id="painValue">5</strong>/10</div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>해당되는 것이 있으면 선택해주세요</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" name="additional" value="previous_treatment">
+                                <span>이전에 척추 관련 치료를 받은 적이 있음</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" name="additional" value="sudden_onset">
+                                <span>갑자기 시작됨 (특정 동작이나 사고 후)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" name="additional" value="bladder_issue">
+                                <span>대소변 조절에 문제가 있음</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-buttons">
+                        <button type="button" class="btn-prev" onclick="prevStep(4)">이전</button>
+                        <button type="button" class="btn-submit" onclick="submitDiagnosis()">결과 확인하기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 결과 섹션 -->
+    <section id="result" class="result-section" style="display: none;">
+        <div class="container">
+            <h2 class="section-title">진단 결과</h2>
+
+            <!-- 긴급 경고 (필요시 표시) -->
+            <div id="emergencyWarning" class="emergency-warning" style="display: none;">
+                <div class="warning-icon">⚠️</div>
+                <div class="warning-content">
+                    <h3>즉시 전문의 진료가 필요합니다</h3>
+                    <p>대소변 조절 장애는 심각한 신경 압박의 징후일 수 있습니다. 가능한 빨리 전문의 진료를 받으세요.</p>
+                </div>
+            </div>
+
+            <div id="resultContent" class="result-content">
+                <!-- 동적으로 결과가 표시됩니다 -->
+            </div>
+
+            <div class="result-actions">
+                <button class="btn-retry" onclick="resetDiagnosis()">다시 진단하기</button>
+                <a href="#appointment" class="btn-appointment">전문의 상담 예약</a>
+            </div>
+
+            <div class="disclaimer">
+                <p>⚠️ <strong>주의사항:</strong> 이 자가진단은 참고용이며 정확한 진단을 대체할 수 없습니다. 정확한 진단과 치료를 위해서는 반드시 전문의 진료를 받으시기 바랍니다.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 척추질환 안내 섹션 -->
+    <section id="diseases" class="diseases-section">
+        <div class="container">
+            <h2 class="section-title">주요 척추 질환 안내</h2>
+            <p class="section-subtitle">클릭하여 각 질환에 대해 자세히 알아보세요</p>
+
+            <div class="disease-cards">
+                <div class="disease-card" onclick="toggleDisease(this)">
+                    <div class="disease-header">
+                        <h3>목디스크 (경추 추간판 탈출증)</h3>
+                        <span class="toggle-icon">+</span>
+                    </div>
+                    <div class="disease-content">
+                        <div class="disease-info">
+                            <h4>증상</h4>
+                            <ul>
+                                <li>목 통증 및 뻣뻣함</li>
+                                <li>어깨, 팔, 손으로 뻗치는 통증</li>
+                                <li>팔이나 손의 저림, 감각 이상</li>
+                                <li>손 힘이 빠지는 느낌</li>
+                            </ul>
+                            <h4>치료 방법</h4>
+                            <ul>
+                                <li><strong>보존적 치료:</strong> 약물치료, 물리치료, 도수치료</li>
+                                <li><strong>주사 치료:</strong> 신경차단술, 경막외 주사</li>
+                                <li><strong>시술:</strong> 신경성형술, 고주파 치료</li>
+                                <li><strong>수술:</strong> 심한 경우 디스크 제거술 또는 인공디스크 치환술</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="disease-card" onclick="toggleDisease(this)">
+                    <div class="disease-header">
+                        <h3>허리디스크 (요추 추간판 탈출증)</h3>
+                        <span class="toggle-icon">+</span>
+                    </div>
+                    <div class="disease-content">
+                        <div class="disease-info">
+                            <h4>증상</h4>
+                            <ul>
+                                <li>허리 통증</li>
+                                <li>엉덩이, 다리로 뻗치는 통증 (좌골신경통)</li>
+                                <li>다리 저림 및 감각 이상</li>
+                                <li>기침이나 재채기 시 통증 악화</li>
+                            </ul>
+                            <h4>치료 방법</h4>
+                            <ul>
+                                <li><strong>보존적 치료:</strong> 약물치료, 물리치료, 운동치료</li>
+                                <li><strong>주사 치료:</strong> 경막외 스테로이드 주사, 신경차단술</li>
+                                <li><strong>시술:</strong> 신경성형술, 내시경 시술</li>
+                                <li><strong>수술:</strong> 미세현미경 디스크 제거술, 내시경 디스크 제거술</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="disease-card" onclick="toggleDisease(this)">
+                    <div class="disease-header">
+                        <h3>척추관 협착증</h3>
+                        <span class="toggle-icon">+</span>
+                    </div>
+                    <div class="disease-content">
+                        <div class="disease-info">
+                            <h4>증상</h4>
+                            <ul>
+                                <li>허리 통증</li>
+                                <li>걸을 때 다리 통증 및 저림 (신경성 파행)</li>
+                                <li>오래 걷지 못하고 쉬었다 걸어야 함</li>
+                                <li>허리를 숙이면 증상이 완화됨</li>
+                            </ul>
+                            <h4>치료 방법</h4>
+                            <ul>
+                                <li><strong>보존적 치료:</strong> 약물치료, 물리치료, 운동치료</li>
+                                <li><strong>주사 치료:</strong> 경막외 주사, 신경차단술</li>
+                                <li><strong>시술:</strong> 풍선확장술, 신경성형술</li>
+                                <li><strong>수술:</strong> 감압술, 척추 유합술</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="disease-card" onclick="toggleDisease(this)">
+                    <div class="disease-header">
+                        <h3>척추전방전위증</h3>
+                        <span class="toggle-icon">+</span>
+                    </div>
+                    <div class="disease-content">
+                        <div class="disease-info">
+                            <h4>증상</h4>
+                            <ul>
+                                <li>허리 통증</li>
+                                <li>오래 서있거나 걸을 때 악화</li>
+                                <li>허리를 뒤로 젖힐 때 통증</li>
+                                <li>다리 통증 및 저림 동반 가능</li>
+                            </ul>
+                            <h4>치료 방법</h4>
+                            <ul>
+                                <li><strong>보존적 치료:</strong> 약물치료, 코어 근력 강화 운동</li>
+                                <li><strong>보조기:</strong> 허리 보조기 착용</li>
+                                <li><strong>주사 치료:</strong> 신경차단술</li>
+                                <li><strong>수술:</strong> 심한 경우 척추 유합술</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="disease-card" onclick="toggleDisease(this)">
+                    <div class="disease-header">
+                        <h3>근막통증 증후군</h3>
+                        <span class="toggle-icon">+</span>
+                    </div>
+                    <div class="disease-content">
+                        <div class="disease-info">
+                            <h4>증상</h4>
+                            <ul>
+                                <li>목, 어깨, 등의 근육 통증</li>
+                                <li>특정 부위를 누르면 통증이 다른 곳으로 퍼짐</li>
+                                <li>근육이 뭉치고 딱딱해짐</li>
+                                <li>두통, 피로감 동반 가능</li>
+                            </ul>
+                            <h4>치료 방법</h4>
+                            <ul>
+                                <li><strong>물리치료:</strong> 온열치료, 전기치료, 초음파치료</li>
+                                <li><strong>도수치료:</strong> 근막이완술, 마사지</li>
+                                <li><strong>주사 치료:</strong> 트리거포인트 주사, 프롤로치료</li>
+                                <li><strong>생활습관:</strong> 자세 교정, 스트레칭</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 진료 예약 섹션 -->
+    <section id="appointment" class="appointment-section">
+        <div class="container">
+            <h2 class="section-title">전문의 진료 예약</h2>
+            <p class="section-subtitle">정확한 진단과 맞춤 치료를 위해 전문의 상담을 받아보세요</p>
+
+            <div class="appointment-content">
+                <div class="doctor-info">
+                    <div class="doctor-photo">
+                        <div class="photo-placeholder">👨‍⚕️</div>
+                    </div>
+                    <div class="doctor-details">
+                        <h3>척추 전문의</h3>
+                        <p class="specialty">정형외과 / 신경외과 전문의</p>
+                        <ul class="qualifications">
+                            <li>척추 질환 전문 진료</li>
+                            <li>비수술적 척추 치료</li>
+                            <li>최소 침습 척추 수술</li>
+                            <li>맞춤형 재활 프로그램</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="appointment-form">
+                    <h3>진료 예약 신청</h3>
+                    <form id="appointmentForm" onsubmit="submitAppointment(event)">
+                        <div class="form-row">
+                            <div class="form-field">
+                                <label for="patientName">성함 *</label>
+                                <input type="text" id="patientName" name="patientName" required placeholder="홍길동">
+                            </div>
+                            <div class="form-field">
+                                <label for="patientPhone">연락처 *</label>
+                                <input type="tel" id="patientPhone" name="patientPhone" required placeholder="010-0000-0000">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-field">
+                                <label for="preferredDate">희망 진료일 *</label>
+                                <input type="date" id="preferredDate" name="preferredDate" required>
+                            </div>
+                            <div class="form-field">
+                                <label for="preferredTime">희망 시간대</label>
+                                <select id="preferredTime" name="preferredTime">
+                                    <option value="morning">오전 (09:00-12:00)</option>
+                                    <option value="afternoon">오후 (14:00-18:00)</option>
+                                    <option value="any">상관없음</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-field full-width">
+                            <label for="symptoms">주요 증상</label>
+                            <textarea id="symptoms" name="symptoms" rows="3" placeholder="현재 증상을 간단히 적어주세요"></textarea>
+                        </div>
+                        <div class="form-field checkbox-field">
+                            <label>
+                                <input type="checkbox" id="privacyConsent" required>
+                                <span>개인정보 수집 및 이용에 동의합니다</span>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn-submit-appointment">예약 신청하기</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="contact-info">
+                <div class="contact-card">
+                    <div class="contact-icon">📞</div>
+                    <h4>전화 예약</h4>
+                    <p>02-123-4567</p>
+                </div>
+                <div class="contact-card">
+                    <div class="contact-icon">⏰</div>
+                    <h4>진료 시간</h4>
+                    <p>평일 09:00 - 18:00<br>토요일 09:00 - 13:00</p>
+                </div>
+                <div class="contact-card">
+                    <div class="contact-icon">📍</div>
+                    <h4>오시는 길</h4>
+                    <p>서울시 강남구 테헤란로 123<br>OO빌딩 5층</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <span class="logo-icon">🩺</span>
+                    <span>척추건강 클리닉</span>
+                </div>
+                <p class="footer-disclaimer">
+                    본 웹사이트의 정보는 의학적 조언을 대체하지 않습니다.
+                    정확한 진단과 치료를 위해 반드시 전문의와 상담하세요.
+                </p>
+                <p class="footer-copyright">© 2024 척추건강 클리닉. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 예약 완료 모달 -->
+    <div id="appointmentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon">✅</div>
+            <h3>예약 신청이 완료되었습니다</h3>
+            <p>담당자가 확인 후 연락드리겠습니다.</p>
+            <button onclick="closeModal()" class="btn-modal-close">확인</button>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
 </body>
 </html>
