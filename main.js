@@ -1,485 +1,681 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+/**
+ * 척추 증상 자가진단 시스템
+ * - 증상 기반 진단 로직
+ * - 치료 방법 안내
+ * - 진료 예약 연결
+ */
 
-// Scene 생성
-const scene = new THREE.Scene();
+// ===== 척추 질환 데이터베이스 =====
+const spineConditions = {
+    cervical_disc: {
+        name: "목디스크 (경추 추간판 탈출증)",
+        description: "목뼈 사이의 디스크가 탈출하여 신경을 압박하는 질환입니다.",
+        symptoms: ["neck", "shoulder", "pain", "numbness", "radiating", "weakness"],
+        triggers: ["sitting", "bending", "coughing"],
+        treatments: [
+            "약물치료: 소염진통제, 근이완제 처방",
+            "물리치료: 견인치료, 온열치료, 전기치료",
+            "주사치료: 경추 신경차단술, 경막외 주사",
+            "시술: 경추 신경성형술, 고주파 치료",
+            "수술: 심한 경우 인공디스크 치환술 또는 경추 유합술"
+        ],
+        severity: "moderate"
+    },
+    lumbar_disc: {
+        name: "허리디스크 (요추 추간판 탈출증)",
+        description: "허리뼈 사이의 디스크가 탈출하여 좌골신경을 압박하는 질환입니다.",
+        symptoms: ["lower_back", "leg", "pain", "numbness", "radiating", "weakness"],
+        triggers: ["sitting", "bending", "lifting", "coughing"],
+        treatments: [
+            "약물치료: 소염진통제, 신경안정제 처방",
+            "물리치료: 허리 견인치료, 운동치료",
+            "주사치료: 요추 경막외 스테로이드 주사, 신경차단술",
+            "시술: 신경성형술, 풍선확장술, 내시경 시술",
+            "수술: 미세현미경 디스크 제거술, 내시경 디스크 제거술"
+        ],
+        severity: "moderate"
+    },
+    spinal_stenosis: {
+        name: "척추관 협착증",
+        description: "척추관이 좁아져서 신경이 압박되는 질환으로, 주로 퇴행성 변화로 발생합니다.",
+        symptoms: ["lower_back", "leg", "pain", "numbness", "walking_difficulty", "stiffness"],
+        triggers: ["standing", "walking"],
+        treatments: [
+            "약물치료: 소염진통제, 혈액순환 개선제",
+            "물리치료: 허리 굴곡 운동, 수중치료",
+            "주사치료: 경막외 주사, 신경차단술",
+            "시술: 풍선확장술, 신경성형술",
+            "수술: 척추 감압술, 척추 유합술"
+        ],
+        severity: "moderate"
+    },
+    spondylolisthesis: {
+        name: "척추전방전위증",
+        description: "척추뼈가 앞으로 미끄러진 상태로, 불안정성과 신경 압박을 유발합니다.",
+        symptoms: ["lower_back", "leg", "pain", "stiffness"],
+        triggers: ["standing", "walking", "bending"],
+        treatments: [
+            "보존적 치료: 허리 보조기 착용, 코어 근력 강화 운동",
+            "물리치료: 척추 안정화 운동, 도수치료",
+            "주사치료: 신경차단술, 인대 강화 주사",
+            "수술: 심한 경우 척추 유합술"
+        ],
+        severity: "moderate"
+    },
+    myofascial_pain: {
+        name: "근막통증 증후군",
+        description: "근육과 근막에 통증 유발점이 생겨 만성적인 통증을 유발하는 질환입니다.",
+        symptoms: ["neck", "shoulder", "upper_back", "pain", "stiffness"],
+        triggers: ["sitting", "morning", "stress"],
+        treatments: [
+            "물리치료: 온열치료, 전기치료, 초음파치료",
+            "도수치료: 근막이완술, 마사지",
+            "주사치료: 트리거포인트 주사, 프롤로치료",
+            "생활관리: 자세 교정, 정기적인 스트레칭, 스트레스 관리"
+        ],
+        severity: "mild"
+    },
+    degenerative_spine: {
+        name: "퇴행성 척추 질환",
+        description: "나이가 들면서 척추의 구조물들이 노화되어 발생하는 질환군입니다.",
+        symptoms: ["lower_back", "upper_back", "pain", "stiffness"],
+        triggers: ["morning", "standing", "walking", "lifting"],
+        treatments: [
+            "약물치료: 소염진통제, 연골보호제",
+            "물리치료: 운동치료, 온열치료",
+            "주사치료: 관절 내 주사, 신경차단술",
+            "생활관리: 적정 체중 유지, 규칙적인 운동"
+        ],
+        severity: "mild"
+    },
+    acute_strain: {
+        name: "급성 허리 염좌",
+        description: "갑작스러운 동작이나 무리한 활동으로 인한 근육/인대 손상입니다.",
+        symptoms: ["lower_back", "pain", "stiffness"],
+        triggers: ["lifting", "bending", "sudden_onset"],
+        treatments: [
+            "급성기: 휴식, 냉찜질 (48시간 이내)",
+            "아급성기: 온찜질, 가벼운 스트레칭",
+            "약물치료: 소염진통제, 근이완제",
+            "물리치료: 전기치료, 초음파치료",
+            "생활관리: 올바른 자세, 점진적 활동 재개"
+        ],
+        severity: "mild"
+    }
+};
 
-// Camera 생성
-const camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    2000
-);
-camera.position.set(0, 50, 100);
+// ===== 상태 관리 =====
+let currentStep = 1;
+let userResponses = {
+    locations: [],
+    symptoms: [],
+    triggers: [],
+    duration: "",
+    painLevel: 5,
+    additional: []
+};
 
-// Renderer 생성
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-document.body.appendChild(renderer.domElement);
-
-// 일시정지 상태
-let isPaused = false;
-
-// 더블클릭으로 일시정지/재개
-renderer.domElement.addEventListener('dblclick', () => {
-    isPaused = !isPaused;
+// ===== 초기화 =====
+document.addEventListener("DOMContentLoaded", function() {
+    initPainSlider();
+    initDatePicker();
+    initSmoothScroll();
 });
 
-// 별 배경 생성
-function createStars() {
-    const starsGeometry = new THREE.BufferGeometry();
-    const starCount = 10000;
-    const positions = new Float32Array(starCount * 3);
+// 통증 슬라이더 초기화
+function initPainSlider() {
+    const painSlider = document.getElementById("painLevel");
+    const painValue = document.getElementById("painValue");
 
-    for (let i = 0; i < starCount * 3; i += 3) {
-        positions[i] = (Math.random() - 0.5) * 2000;
-        positions[i + 1] = (Math.random() - 0.5) * 2000;
-        positions[i + 2] = (Math.random() - 0.5) * 2000;
+    if (painSlider && painValue) {
+        painSlider.addEventListener("input", function() {
+            painValue.textContent = this.value;
+        });
+    }
+}
+
+// 날짜 선택기 초기화 (오늘 이후만 선택 가능)
+function initDatePicker() {
+    const dateInput = document.getElementById("preferredDate");
+    if (dateInput) {
+        const today = new Date().toISOString().split("T")[0];
+        dateInput.setAttribute("min", today);
+    }
+}
+
+// 부드러운 스크롤
+function initSmoothScroll() {
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute("href"));
+            if (target) {
+                const headerOffset = 80;
+                const elementPosition = target.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: "smooth"
+                });
+            }
+        });
+    });
+}
+
+// ===== 폼 네비게이션 =====
+function nextStep(step) {
+    // 현재 단계의 선택 저장
+    saveCurrentStepData(step);
+
+    // 유효성 검사
+    if (!validateStep(step)) {
+        return;
     }
 
-    starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    // 다음 단계로 이동
+    currentStep = step + 1;
+    updateStepDisplay();
+}
 
-    const starsMaterial = new THREE.PointsMaterial({
-        color: 0xffffff,
-        size: 0.5,
-        sizeAttenuation: true
+function prevStep(step) {
+    currentStep = step - 1;
+    updateStepDisplay();
+}
+
+function saveCurrentStepData(step) {
+    switch(step) {
+        case 1:
+            userResponses.locations = getCheckedValues("location");
+            break;
+        case 2:
+            userResponses.symptoms = getCheckedValues("symptom");
+            break;
+        case 3:
+            userResponses.triggers = getCheckedValues("trigger");
+            break;
+        case 4:
+            userResponses.duration = getRadioValue("duration");
+            userResponses.painLevel = parseInt(document.getElementById("painLevel").value);
+            userResponses.additional = getCheckedValues("additional");
+            break;
+    }
+}
+
+function getCheckedValues(name) {
+    const checkboxes = document.querySelectorAll(`input[name="${name}"]:checked`);
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function getRadioValue(name) {
+    const radio = document.querySelector(`input[name="${name}"]:checked`);
+    return radio ? radio.value : "";
+}
+
+function validateStep(step) {
+    let isValid = true;
+    let message = "";
+
+    switch(step) {
+        case 1:
+            if (userResponses.locations.length === 0) {
+                message = "통증 부위를 최소 1개 이상 선택해주세요.";
+                isValid = false;
+            }
+            break;
+        case 2:
+            if (userResponses.symptoms.length === 0) {
+                message = "증상을 최소 1개 이상 선택해주세요.";
+                isValid = false;
+            }
+            break;
+        case 3:
+            // 악화 요인은 선택 사항
+            break;
+        case 4:
+            if (!userResponses.duration) {
+                message = "증상 기간을 선택해주세요.";
+                isValid = false;
+            }
+            break;
+    }
+
+    if (!isValid) {
+        alert(message);
+    }
+
+    return isValid;
+}
+
+function updateStepDisplay() {
+    // 모든 스텝 숨기기
+    document.querySelectorAll(".form-step").forEach(step => {
+        step.classList.remove("active");
     });
 
-    return new THREE.Points(starsGeometry, starsMaterial);
+    // 현재 스텝 표시
+    const currentStepEl = document.getElementById(`step${currentStep}`);
+    if (currentStepEl) {
+        currentStepEl.classList.add("active");
+    }
+
+    // 진행 표시바 업데이트
+    const progressFill = document.getElementById("progressFill");
+    progressFill.style.width = `${(currentStep / 4) * 100}%`;
+
+    // 스텝 인디케이터 업데이트
+    document.querySelectorAll(".progress-steps .step").forEach((step, index) => {
+        step.classList.remove("active", "completed");
+        if (index + 1 < currentStep) {
+            step.classList.add("completed");
+        } else if (index + 1 === currentStep) {
+            step.classList.add("active");
+        }
+    });
 }
 
-const stars = createStars();
-scene.add(stars);
+// ===== 진단 분석 =====
+function submitDiagnosis() {
+    saveCurrentStepData(4);
 
-// 텍스처 로더
-const textureLoader = new THREE.TextureLoader();
-textureLoader.crossOrigin = 'anonymous';
-
-// 태양 셰이더 (이글이글거리는 효과)
-const sunVertexShader = `
-    varying vec2 vUv;
-    varying vec3 vNormal;
-    varying vec3 vPosition;
-
-    void main() {
-        vUv = uv;
-        vNormal = normalize(normalMatrix * normal);
-        vPosition = position;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-`;
-
-const sunFragmentShader = `
-    uniform float time;
-    varying vec2 vUv;
-    varying vec3 vNormal;
-    varying vec3 vPosition;
-
-    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
-    vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-    float snoise(vec3 v) {
-        const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-        const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-
-        vec3 i  = floor(v + dot(v, C.yyy));
-        vec3 x0 = v - i + dot(i, C.xxx);
-
-        vec3 g = step(x0.yzx, x0.xyz);
-        vec3 l = 1.0 - g;
-        vec3 i1 = min(g.xyz, l.zxy);
-        vec3 i2 = max(g.xyz, l.zxy);
-
-        vec3 x1 = x0 - i1 + C.xxx;
-        vec3 x2 = x0 - i2 + C.yyy;
-        vec3 x3 = x0 - D.yyy;
-
-        i = mod289(i);
-        vec4 p = permute(permute(permute(
-            i.z + vec4(0.0, i1.z, i2.z, 1.0))
-            + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-            + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-
-        float n_ = 0.142857142857;
-        vec3 ns = n_ * D.wyz - D.xzx;
-
-        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-
-        vec4 x_ = floor(j * ns.z);
-        vec4 y_ = floor(j - 7.0 * x_);
-
-        vec4 x = x_ *ns.x + ns.yyyy;
-        vec4 y = y_ *ns.x + ns.yyyy;
-        vec4 h = 1.0 - abs(x) - abs(y);
-
-        vec4 b0 = vec4(x.xy, y.xy);
-        vec4 b1 = vec4(x.zw, y.zw);
-
-        vec4 s0 = floor(b0)*2.0 + 1.0;
-        vec4 s1 = floor(b1)*2.0 + 1.0;
-        vec4 sh = -step(h, vec4(0.0));
-
-        vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
-        vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-
-        vec3 p0 = vec3(a0.xy, h.x);
-        vec3 p1 = vec3(a0.zw, h.y);
-        vec3 p2 = vec3(a1.xy, h.z);
-        vec3 p3 = vec3(a1.zw, h.w);
-
-        vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
-        p0 *= norm.x;
-        p1 *= norm.y;
-        p2 *= norm.z;
-        p3 *= norm.w;
-
-        vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-        m = m * m;
-        return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+    if (!validateStep(4)) {
+        return;
     }
 
-    float fbm(vec3 p) {
-        float value = 0.0;
-        float amplitude = 0.5;
-        float frequency = 1.0;
-        for (int i = 0; i < 6; i++) {
-            value += amplitude * snoise(p * frequency);
-            amplitude *= 0.5;
-            frequency *= 2.0;
-        }
-        return value;
-    }
+    // 진단 분석 수행
+    const results = analyzeDiagnosis();
 
-    void main() {
-        vec3 pos = vPosition * 0.15;
+    // 결과 표시
+    displayResults(results);
 
-        float noise1 = fbm(pos + time * 0.3);
-        float noise2 = fbm(pos * 2.0 - time * 0.2);
-        float noise3 = fbm(pos * 4.0 + time * 0.4);
+    // 결과 섹션으로 스크롤
+    document.getElementById("diagnosis").style.display = "none";
+    document.getElementById("result").style.display = "block";
 
-        float finalNoise = noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2;
+    setTimeout(() => {
+        document.getElementById("result").scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+}
 
-        vec3 innerColor = vec3(1.0, 1.0, 0.8);
-        vec3 midColor = vec3(1.0, 0.6, 0.1);
-        vec3 outerColor = vec3(0.8, 0.2, 0.0);
+function analyzeDiagnosis() {
+    const scores = {};
 
-        float t = finalNoise * 0.5 + 0.5;
-        vec3 color;
-        if (t < 0.5) {
-            color = mix(outerColor, midColor, t * 2.0);
-        } else {
-            color = mix(midColor, innerColor, (t - 0.5) * 2.0);
-        }
+    // 각 질환에 대한 점수 계산
+    for (const [key, condition] of Object.entries(spineConditions)) {
+        let score = 0;
+        let matches = 0;
 
-        float brightness = 0.8 + finalNoise * 0.4;
-        color *= brightness;
-
-        gl_FragColor = vec4(color, 1.0);
-    }
-`;
-
-// 태양 생성
-const sunGeometry = new THREE.SphereGeometry(10, 64, 64);
-const sunMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-        time: { value: 0 }
-    },
-    vertexShader: sunVertexShader,
-    fragmentShader: sunFragmentShader
-});
-const sun = new THREE.Mesh(sunGeometry, sunMaterial);
-scene.add(sun);
-
-// 태양 글로우 효과
-const sunGlowGeometry = new THREE.SphereGeometry(14, 64, 64);
-const sunGlowMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-        time: { value: 0 }
-    },
-    vertexShader: `
-        varying vec3 vNormal;
-        void main() {
-            vNormal = normalize(normalMatrix * normal);
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-    `,
-    fragmentShader: `
-        uniform float time;
-        varying vec3 vNormal;
-        void main() {
-            float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-            float flicker = 0.9 + 0.1 * sin(time * 3.0);
-            vec3 color = vec3(1.0, 0.5, 0.1) * intensity * flicker;
-            gl_FragColor = vec4(color, intensity);
-        }
-    `,
-    blending: THREE.AdditiveBlending,
-    side: THREE.BackSide,
-    transparent: true
-});
-const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
-scene.add(sunGlow);
-
-// 행성 데이터 - 색상 fallback 포함
-const planetData = [
-    {
-        name: 'mercury',
-        distance: 20,
-        size: 0.8,
-        orbitSpeed: 0.02,
-        rotationSpeed: 0.0025,
-        color: 0x9e9e9e,
-        texture: 'https://upload.wikimedia.org/wikipedia/commons/3/3f/Mercury_Globe-MESSENGER_mosance_centered_at_0degN-0degE.jpg'
-    },
-    {
-        name: 'venus',
-        distance: 30,
-        size: 1.2,
-        orbitSpeed: 0.0075,
-        rotationSpeed: -0.001,
-        color: 0xe8cda0,
-        texture: 'https://upload.wikimedia.org/wikipedia/commons/1/1c/Solarsystemscope_texture_8k_venus_surface.jpg'
-    },
-    {
-        name: 'earth',
-        distance: 45,
-        size: 1.5,
-        orbitSpeed: 0.005,
-        rotationSpeed: 0.01,
-        color: 0x6b93d6,
-        texture: 'https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg'
-    },
-    {
-        name: 'mars',
-        distance: 60,
-        size: 1.0,
-        orbitSpeed: 0.004,
-        rotationSpeed: 0.009,
-        color: 0xc1440e,
-        texture: 'https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg'
-    },
-    {
-        name: 'jupiter',
-        distance: 90,
-        size: 5,
-        orbitSpeed: 0.001,
-        rotationSpeed: 0.02,
-        color: 0xd8ca9d,
-        texture: 'https://upload.wikimedia.org/wikipedia/commons/e/e2/Jupiter.jpg'
-    },
-    {
-        name: 'saturn',
-        distance: 120,
-        size: 4,
-        orbitSpeed: 0.00045,
-        rotationSpeed: 0.019,
-        hasRing: true,
-        color: 0xead6b8,
-        texture: 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Saturn_during_Equinox.jpg'
-    },
-    {
-        name: 'uranus',
-        distance: 150,
-        size: 2.5,
-        orbitSpeed: 0.0002,
-        rotationSpeed: 0.015,
-        color: 0xd1e7e7,
-        tilt: 98
-    },
-    {
-        name: 'neptune',
-        distance: 180,
-        size: 2.3,
-        orbitSpeed: 0.00005,
-        rotationSpeed: 0.016,
-        color: 0x5b5ddf,
-        texture: 'https://upload.wikimedia.org/wikipedia/commons/6/63/Neptune_-_Voyager_2_%2829347980845%29_flatten_crop.jpg'
-    }
-];
-
-const planets = [];
-
-// 행성 생성 함수
-function createPlanet(data) {
-    const group = new THREE.Group();
-
-    const geometry = new THREE.SphereGeometry(data.size, 64, 64);
-
-    // MeshBasicMaterial 사용 (조명 불필요, 항상 밝게 보임)
-    let material;
-
-    if (data.texture) {
-        const texture = textureLoader.load(
-            data.texture,
-            // 성공 콜백
-            () => {},
-            // 진행 콜백
-            () => {},
-            // 실패 콜백 - 색상으로 대체
-            () => {
-                planet.material = new THREE.MeshBasicMaterial({ color: data.color });
+        // 위치 매칭 (가중치 2)
+        for (const location of userResponses.locations) {
+            if (condition.symptoms.includes(location)) {
+                score += 2;
+                matches++;
             }
-        );
-        material = new THREE.MeshBasicMaterial({ map: texture });
+        }
+
+        // 증상 매칭 (가중치 1.5)
+        for (const symptom of userResponses.symptoms) {
+            if (condition.symptoms.includes(symptom)) {
+                score += 1.5;
+                matches++;
+            }
+        }
+
+        // 악화 요인 매칭 (가중치 1)
+        for (const trigger of userResponses.triggers) {
+            if (condition.triggers.includes(trigger)) {
+                score += 1;
+                matches++;
+            }
+        }
+
+        // 추가 요인
+        if (userResponses.additional.includes("sudden_onset") && key === "acute_strain") {
+            score += 3;
+        }
+
+        // 만성도에 따른 조정
+        if (userResponses.duration === "chronic_long") {
+            if (key === "spinal_stenosis" || key === "degenerative_spine") {
+                score += 2;
+            }
+        } else if (userResponses.duration === "acute") {
+            if (key === "acute_strain") {
+                score += 2;
+            }
+        }
+
+        // 통증 강도에 따른 조정
+        if (userResponses.painLevel >= 7) {
+            if (condition.severity === "moderate") {
+                score += 1;
+            }
+        }
+
+        // 최소 매칭 점수 필터
+        if (matches >= 2) {
+            scores[key] = {
+                condition: condition,
+                score: score,
+                matches: matches
+            };
+        }
+    }
+
+    // 점수순으로 정렬
+    const sortedResults = Object.entries(scores)
+        .sort((a, b) => b[1].score - a[1].score)
+        .slice(0, 3); // 상위 3개만
+
+    return sortedResults;
+}
+
+function displayResults(results) {
+    const resultContent = document.getElementById("resultContent");
+    const emergencyWarning = document.getElementById("emergencyWarning");
+
+    // 긴급 경고 확인 (대소변 장애)
+    if (userResponses.additional.includes("bladder_issue")) {
+        emergencyWarning.style.display = "flex";
     } else {
-        material = new THREE.MeshBasicMaterial({ color: data.color });
+        emergencyWarning.style.display = "none";
     }
 
-    const planet = new THREE.Mesh(geometry, material);
-    group.add(planet);
-
-    // 천왕성 기울기 적용
-    if (data.tilt) {
-        planet.rotation.z = THREE.MathUtils.degToRad(data.tilt);
+    // 결과가 없는 경우
+    if (results.length === 0) {
+        resultContent.innerHTML = `
+            <div class="result-card">
+                <h4>분석 결과</h4>
+                <p>입력하신 정보만으로는 특정 질환을 추정하기 어렵습니다.</p>
+                <p>정확한 진단을 위해 전문의 상담을 권장드립니다.</p>
+            </div>
+        `;
+        return;
     }
 
-    // 토성 고리
-    if (data.hasRing) {
-        const ringGeometry = new THREE.RingGeometry(data.size * 1.4, data.size * 2.3, 64);
-        const ringMaterial = new THREE.MeshBasicMaterial({
-            color: 0xc9b896,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.8
-        });
-        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-        ring.rotation.x = -Math.PI / 2.5;
-        group.add(ring);
-    }
+    // 결과 카드 생성
+    let html = `
+        <div class="summary-header">
+            <h3>입력하신 증상을 분석한 결과입니다</h3>
+            <p>다음과 같은 질환이 의심됩니다. 정확한 진단을 위해 전문의 상담을 권장합니다.</p>
+        </div>
+    `;
 
-    // 궤도 표시
-    const orbitGeometry = new THREE.BufferGeometry();
-    const orbitPoints = [];
-    for (let i = 0; i <= 128; i++) {
-        const angle = (i / 128) * Math.PI * 2;
-        orbitPoints.push(new THREE.Vector3(
-            Math.cos(angle) * data.distance,
-            0,
-            Math.sin(angle) * data.distance
-        ));
-    }
-    orbitGeometry.setFromPoints(orbitPoints);
-    const orbitMaterial = new THREE.LineBasicMaterial({ color: 0x6688aa, transparent: true, opacity: 0.6 });
-    const orbit = new THREE.Line(orbitGeometry, orbitMaterial);
-    scene.add(orbit);
+    // 가능성 계산
+    const maxScore = results[0][1].score;
 
-    // 초기 위치 설정
-    group.position.x = data.distance;
-    scene.add(group);
+    results.forEach(([key, data], index) => {
+        const probability = Math.min(Math.round((data.score / maxScore) * 100), 95);
+        const probabilityText = probability >= 70 ? "높음" : probability >= 40 ? "중간" : "낮음";
 
-    return {
-        group,
-        planet,
-        data,
-        angle: Math.random() * Math.PI * 2
-    };
+        html += `
+            <div class="result-card">
+                <h4>
+                    ${index + 1}. ${data.condition.name}
+                    <span class="probability-badge">가능성 ${probabilityText}</span>
+                </h4>
+                <p>${data.condition.description}</p>
+                <h5>권장 치료 방법</h5>
+                <ul class="treatment-list">
+                    ${data.condition.treatments.map(t => `<li>${t}</li>`).join("")}
+                </ul>
+            </div>
+        `;
+    });
+
+    // 증상 요약 추가
+    html += `
+        <div class="result-card" style="border-left-color: var(--secondary-color);">
+            <h4>입력하신 증상 요약</h4>
+            <p><strong>통증 부위:</strong> ${getLocationNames(userResponses.locations)}</p>
+            <p><strong>증상:</strong> ${getSymptomNames(userResponses.symptoms)}</p>
+            <p><strong>악화 요인:</strong> ${getTriggerNames(userResponses.triggers)}</p>
+            <p><strong>증상 기간:</strong> ${getDurationText(userResponses.duration)}</p>
+            <p><strong>통증 강도:</strong> ${userResponses.painLevel}/10</p>
+        </div>
+    `;
+
+    resultContent.innerHTML = html;
 }
 
-// 모든 행성 생성
-planetData.forEach(data => {
-    planets.push(createPlanet(data));
-});
+// 이름 변환 함수들
+function getLocationNames(locations) {
+    const names = {
+        neck: "목",
+        shoulder: "어깨/팔",
+        upper_back: "등",
+        lower_back: "허리",
+        leg: "엉덩이/다리"
+    };
+    return locations.map(l => names[l] || l).join(", ") || "없음";
+}
 
-// OrbitControls 추가
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.enableZoom = false;
+function getSymptomNames(symptoms) {
+    const names = {
+        pain: "통증",
+        numbness: "저림",
+        weakness: "근력 약화",
+        stiffness: "뻣뻣함",
+        radiating: "방사통",
+        walking_difficulty: "보행 장애"
+    };
+    return symptoms.map(s => names[s] || s).join(", ") || "없음";
+}
 
-// Raycaster for interactions
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-const minDistance = 15;
-const maxDistance = 500;
+function getTriggerNames(triggers) {
+    const names = {
+        sitting: "오래 앉아있을 때",
+        standing: "오래 서있을 때",
+        walking: "걸을 때",
+        bending: "허리 숙일 때",
+        morning: "아침에",
+        night: "밤에",
+        lifting: "무거운 것 들 때",
+        coughing: "기침할 때"
+    };
+    return triggers.map(t => names[t] || t).join(", ") || "특이사항 없음";
+}
 
-// 클릭 위치 중심으로 회전하도록 설정
-renderer.domElement.addEventListener('mousedown', (event) => {
-    if (event.button === 0) { // 왼쪽 클릭
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+function getDurationText(duration) {
+    const texts = {
+        acute: "1주일 이내 (급성)",
+        subacute: "1주~1개월",
+        chronic_short: "1~3개월",
+        chronic_long: "3개월 이상 (만성)"
+    };
+    return texts[duration] || "미선택";
+}
 
-        raycaster.setFromCamera(mouse, camera);
+// ===== 진단 리셋 =====
+function resetDiagnosis() {
+    // 상태 초기화
+    currentStep = 1;
+    userResponses = {
+        locations: [],
+        symptoms: [],
+        triggers: [],
+        duration: "",
+        painLevel: 5,
+        additional: []
+    };
 
-        // 모든 행성과 태양을 대상으로 검사
-        const allObjects = [sun, ...planets.map(p => p.planet)];
-        const intersects = raycaster.intersectObjects(allObjects, true);
+    // 폼 초기화
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('input[type="radio"]').forEach(rb => rb.checked = false);
+    document.getElementById("painLevel").value = 5;
+    document.getElementById("painValue").textContent = "5";
 
-        if (intersects.length > 0) {
-            // 클릭한 객체의 월드 위치를 타겟으로 설정
-            const clickedPoint = intersects[0].point;
-            controls.target.copy(clickedPoint);
-        } else {
-            // 빈 공간 클릭 시 카메라가 보는 방향의 평면과 교차점
-            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            const intersectPoint = new THREE.Vector3();
-            raycaster.ray.intersectPlane(plane, intersectPoint);
-            if (intersectPoint) {
-                controls.target.copy(intersectPoint);
-            }
+    // 화면 전환
+    document.getElementById("result").style.display = "none";
+    document.getElementById("diagnosis").style.display = "block";
+    updateStepDisplay();
+
+    // 진단 섹션으로 스크롤
+    setTimeout(() => {
+        document.getElementById("diagnosis").scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+}
+
+// ===== 질환 카드 토글 =====
+function toggleDisease(card) {
+    // 다른 카드 닫기
+    document.querySelectorAll(".disease-card").forEach(c => {
+        if (c !== card) {
+            c.classList.remove("active");
         }
-    }
-});
+    });
 
-// 마우스 커서 위치 중심 줌
-renderer.domElement.addEventListener('wheel', (event) => {
+    // 현재 카드 토글
+    card.classList.toggle("active");
+}
+
+// ===== 예약 폼 제출 =====
+function submitAppointment(event) {
     event.preventDefault();
 
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    const form = event.target;
+    const formData = new FormData(form);
 
-    raycaster.setFromCamera(mouse, camera);
-    const direction = raycaster.ray.direction.clone();
+    // 간단한 유효성 검사
+    const name = formData.get("patientName");
+    const phone = formData.get("patientPhone");
+    const date = formData.get("preferredDate");
 
-    const zoomSpeed = 10;
-    const zoomAmount = event.deltaY > 0 ? -zoomSpeed : zoomSpeed;
-
-    const newCameraPos = camera.position.clone().add(direction.multiplyScalar(zoomAmount));
-
-    const distanceFromOrigin = newCameraPos.length();
-    if (distanceFromOrigin >= minDistance && distanceFromOrigin <= maxDistance) {
-        camera.position.copy(newCameraPos);
-        const targetMove = raycaster.ray.direction.clone().multiplyScalar(zoomAmount * 0.5);
-        controls.target.add(targetMove);
-    }
-}, { passive: false });
-
-// 시간 변수
-let time = 0;
-
-// 애니메이션 루프
-function animate() {
-    requestAnimationFrame(animate);
-
-    if (!isPaused) {
-        time += 0.016;
-
-        sunMaterial.uniforms.time.value = time;
-        sunGlowMaterial.uniforms.time.value = time;
-
-        planets.forEach(planetObj => {
-            planetObj.angle += planetObj.data.orbitSpeed;
-            planetObj.group.position.x = Math.cos(planetObj.angle) * planetObj.data.distance;
-            planetObj.group.position.z = Math.sin(planetObj.angle) * planetObj.data.distance;
-
-            planetObj.planet.rotation.y += planetObj.data.rotationSpeed;
-        });
-
-        stars.rotation.y += 0.00005;
+    if (!name || !phone || !date) {
+        alert("필수 항목을 모두 입력해주세요.");
+        return;
     }
 
-    controls.update();
-    renderer.render(scene, camera);
+    // 전화번호 형식 검사
+    const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/;
+    if (!phoneRegex.test(phone.replace(/-/g, ""))) {
+        alert("올바른 전화번호 형식을 입력해주세요.");
+        return;
+    }
+
+    // 예약 정보 저장 (실제로는 서버로 전송)
+    const appointmentData = {
+        name: name,
+        phone: phone,
+        date: date,
+        time: formData.get("preferredTime"),
+        symptoms: formData.get("symptoms"),
+        timestamp: new Date().toISOString()
+    };
+
+    console.log("예약 정보:", appointmentData);
+
+    // 자가진단 결과가 있으면 함께 저장
+    if (userResponses.locations.length > 0) {
+        appointmentData.diagnosisData = userResponses;
+    }
+
+    // 로컬 스토리지에 저장 (데모용)
+    saveAppointment(appointmentData);
+
+    // 폼 초기화
+    form.reset();
+
+    // 성공 모달 표시
+    document.getElementById("appointmentModal").classList.add("active");
 }
 
-animate();
+function saveAppointment(data) {
+    const appointments = JSON.parse(localStorage.getItem("spineAppointments") || "[]");
+    appointments.push(data);
+    localStorage.setItem("spineAppointments", JSON.stringify(appointments));
+}
 
-// 윈도우 리사이즈 대응
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+function closeModal() {
+    document.getElementById("appointmentModal").classList.remove("active");
+}
+
+// 모달 외부 클릭 시 닫기
+document.addEventListener("click", function(event) {
+    const modal = document.getElementById("appointmentModal");
+    if (event.target === modal) {
+        closeModal();
+    }
+});
+
+// ESC 키로 모달 닫기
+document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+        closeModal();
+    }
+});
+
+// ===== 모바일 메뉴 =====
+document.addEventListener("DOMContentLoaded", function() {
+    const mobileMenuBtn = document.querySelector(".mobile-menu-btn");
+    const nav = document.querySelector(".nav");
+
+    if (mobileMenuBtn && nav) {
+        mobileMenuBtn.addEventListener("click", function() {
+            nav.classList.toggle("mobile-active");
+            this.classList.toggle("active");
+        });
+    }
+});
+
+// ===== 척추 SVG 인터랙션 =====
+document.addEventListener("DOMContentLoaded", function() {
+    const spineSections = document.querySelectorAll(".spine-section");
+
+    spineSections.forEach(section => {
+        section.addEventListener("click", function() {
+            const sectionName = this.dataset.section;
+            let targetLocation = "";
+
+            switch(sectionName) {
+                case "cervical":
+                    targetLocation = "neck";
+                    break;
+                case "thoracic":
+                    targetLocation = "upper_back";
+                    break;
+                case "lumbar":
+                    targetLocation = "lower_back";
+                    break;
+                case "sacral":
+                    targetLocation = "leg";
+                    break;
+            }
+
+            // 해당 위치의 체크박스 선택
+            const checkbox = document.querySelector(`input[name="location"][value="${targetLocation}"]`);
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+
+                // 진단 섹션으로 스크롤
+                document.getElementById("diagnosis").scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        });
+    });
+});
+
+// ===== 자가진단 결과를 예약 폼에 자동 입력 =====
+document.addEventListener("DOMContentLoaded", function() {
+    const appointmentLink = document.querySelector(".btn-appointment");
+
+    if (appointmentLink) {
+        appointmentLink.addEventListener("click", function(e) {
+            setTimeout(() => {
+                // 증상 요약을 예약 폼의 증상 필드에 입력
+                if (userResponses.locations.length > 0) {
+                    const symptomsField = document.getElementById("symptoms");
+                    if (symptomsField) {
+                        const summary = [
+                            `통증 부위: ${getLocationNames(userResponses.locations)}`,
+                            `증상: ${getSymptomNames(userResponses.symptoms)}`,
+                            `통증 강도: ${userResponses.painLevel}/10`,
+                            `기간: ${getDurationText(userResponses.duration)}`
+                        ].join("\n");
+
+                        symptomsField.value = summary;
+                    }
+                }
+            }, 500);
+        });
+    }
 });
